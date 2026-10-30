@@ -30,19 +30,18 @@ module Puppet::CatalogDiff
       keys = v.sort_by { |key, _val| key }.to_h
       keys.each_pair do |key, val|
         str << "\t     #{indent}     #{key} => "
-        str << format_value(val, "#{indent}     ", true, ',', key)
+        str << format_value(val, "#{indent}     ", true, ',')
       end
       str << "\t     #{indent}    }" << "\n" << comma
     end
 
-    def format_value(v, indent = '', do_indent = false, comma = '', k = nil)
+    def format_value(v, indent = '', do_indent = false, comma = '')
       case v
       when Array
         format_array(v, indent, do_indent, comma)
       when Hash
         format_hash(v, indent, do_indent, comma)
       else
-        v = v[:checksum] if k == :content && v.is_a?(Hash)
         format_simple(v, indent, do_indent, comma)
       end
     end
@@ -55,7 +54,7 @@ module Puppet::CatalogDiff
       params.each_pair do |k, v|
         str << "\t     #{k} => "
         indent = ' ' * k.to_s.size
-        str << format_value(v, indent, false, '', k)
+        str << format_value(v, indent, false, '')
       end
       str << "\t}\n"
       str

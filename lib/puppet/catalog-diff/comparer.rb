@@ -45,6 +45,10 @@ module Puppet::CatalogDiff
 
         next if new_resource[:parameters] == resource[:parameters]
 
+        # Content can be huge, so only content_differences shows it as text
+        cont_diff = str_diff(checksum_content!(resource[:parameters]), checksum_content!(new_resource[:parameters]))
+        content_differences[resource[:resource_id]] = cont_diff if cont_diff
+
         parameters_in_old[resource[:resource_id]] =
           (resource[:parameters].to_a - new_resource[:parameters].to_a).to_h
 
@@ -70,9 +74,6 @@ module Puppet::CatalogDiff
 
           differences_in_new[resource[:resource_id]] = new_resource
         end
-
-        cont_diff = str_diff(resource[:parameters][:content], new_resource[:parameters][:content])
-        content_differences[resource[:resource_id]] = cont_diff if cont_diff
       end
       resource_differences[:old] = differences_in_old
       resource_differences[:new] = differences_in_new
@@ -81,6 +82,16 @@ module Puppet::CatalogDiff
       resource_differences[:old_params]  = parameters_in_old
       resource_differences[:new_params]  = parameters_in_new
       resource_differences
+    end
+
+    # Replaces content with its checksum and returns it as text,
+    # or returns nil if it is not text
+    def checksum_content!(params)
+      text = params[:content]
+      return nil unless text.is_a?(String)
+
+      params[:content] = Digest::MD5.hexdigest(text)
+      text
     end
 
     # filter parameters
@@ -126,27 +137,12 @@ module Puppet::CatalogDiff
       str
     end
 
-    def str_diff(cont1, cont2)
-      return nil unless cont1 && cont2
-
-      if cont1.is_a?(Hash)
-        str1 = cont1[:content]
-        sum1 = cont1[:checksum]
-      else
-        str1 = cont1
-        sum1 = Digest::MD5.hexdigest(str1)
-      end
-
-      if cont2.is_a?(Hash)
-        str2 = cont2[:content]
-        sum2 = cont2[:checksum]
-      else
-        str2 = cont2
-        sum2 = Digest::MD5.hexdigest(str2)
-      end
-
-      return nil if sum1 == sum2
+    def str_diff(str1, str2)
       return nil unless str1 && str2
+
+      sum1 = Digest::MD5.hexdigest(str1)
+      sum2 = Digest::MD5.hexdigest(str2)
+      return nil if sum1 == sum2
 
       str1 = validate_encoding(str1)
       str2 = validate_encoding(str2)

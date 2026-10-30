@@ -14,7 +14,6 @@ describe Puppet::CatalogDiff::Comparer do
           alias: 'baz',
           path: '/foo',
           content: 'foo content',
-          checksum: '6dbda444875c24ec1bbdb433456be11f',
         },
       },
     ]
@@ -30,7 +29,6 @@ describe Puppet::CatalogDiff::Comparer do
           alias: 'baz',
           path: '/food',
           content: 'foo content 2',
-          checksum: '4eb91aa4f5795ef3658d1e0a2798c816',
         },
       },
     ]
@@ -69,18 +67,22 @@ describe Puppet::CatalogDiff::Comparer do
       diffs = compare_resources(res1, res2, {})
       expect(diffs[:old]).to eq(res1[0][:resource_id] => res1[0])
       expect(diffs[:new]).to eq(res2[0][:resource_id] => res2[0])
-      expect(diffs[:old_params]).to eq('file.foo' => { content: 'foo content', path: '/foo', checksum: '6dbda444875c24ec1bbdb433456be11f' })
-      expect(diffs[:new_params]).to eq('file.foo' => { content: 'foo content 2', path: '/food', checksum: '4eb91aa4f5795ef3658d1e0a2798c816' })
+      expect(diffs[:old_params]).to eq('file.foo' => { content: '6dbda444875c24ec1bbdb433456be11f', path: '/foo' })
+      expect(diffs[:new_params]).to eq('file.foo' => { content: '4eb91aa4f5795ef3658d1e0a2798c816', path: '/food' })
       expect(diffs[:content_differences]['file.foo']).to match(%r{^\+foo content 2$})
       expect(diffs[:string_diffs]).to be_empty
     end
 
     it 'returns string_diffs with show_resource_diff' do
       diffs = compare_resources(res1, res2, show_resource_diff: true)
-      expect(diffs[:string_diffs]['file.foo'][3]).to eq("-\t     content => \"foo content\"")
+      expect(diffs[:string_diffs]['file.foo']).to include(
+        "-\t     content => \"6dbda444875c24ec1bbdb433456be11f\"",
+        "+\t     content => \"4eb91aa4f5795ef3658d1e0a2798c816\"",
+      )
+      expect(diffs[:content_differences]['file.foo']).to match(%r{^\+foo content 2$})
     end
 
-    it 'returns string_diffs with show_resource_diff with content encoded in ISO8859-1 (latin1)' do
+    it 'returns content_differences with content encoded in ISO8859-1 (latin1)' do
       # Without this the unit test fails when running on LC_ALL=C but works with LC_ALL=en_US.UTF-8
       # With this it works on both.
       Encoding.default_internal = 'UTF-8'
@@ -88,18 +90,25 @@ describe Puppet::CatalogDiff::Comparer do
 
       latin1_string = [246].pack('C*').force_encoding('UTF-8')
       res1[0][:parameters][:content] = latin1_string
-      expect { compare_resources(res1, res2, show_resource_diff: true) }.not_to raise_error
-      diffs = compare_resources(res1, res2, show_resource_diff: true)
+      diffs = compare_resources(res1, res2, {})
 
       ruby_default_replacement_string_for_invalid_characters = '�'
-      expect(diffs[:string_diffs]['file.foo'][3]).to \
-        eq("-\t     content => \"#{ruby_default_replacement_string_for_invalid_characters}\"")
+      expect(diffs[:content_differences]['file.foo']).to \
+        match(%r{^-#{ruby_default_replacement_string_for_invalid_characters}$})
     end
 
     it 'returns a diff without path parameter' do
       diffs = compare_resources(res1, res2, ignore_parameters: 'path')
-      expect(diffs[:old_params]).to eq('file.foo' => { content: 'foo content', checksum: '6dbda444875c24ec1bbdb433456be11f' })
-      expect(diffs[:new_params]).to eq('file.foo' => { content: 'foo content 2', checksum: '4eb91aa4f5795ef3658d1e0a2798c816' })
+      expect(diffs[:old_params]).to eq('file.foo' => { content: '6dbda444875c24ec1bbdb433456be11f' })
+      expect(diffs[:new_params]).to eq('file.foo' => { content: '4eb91aa4f5795ef3658d1e0a2798c816' })
+    end
+
+    it 'leaves content that is not text unchanged' do
+      res1[0][:parameters][:content] = { 'foo' => 'bar' }
+      res2[0][:parameters][:content] = { 'foo' => 'baz' }
+      diffs = compare_resources(res1, res2, {})
+      expect(diffs[:new_params]['file.foo'][:content]).to eq('foo' => 'baz')
+      expect(diffs[:content_differences]).to be_empty
     end
   end
 
@@ -128,11 +137,9 @@ describe Puppet::CatalogDiff::Comparer do
       end
     end
 
-    context 'when passing hashes' do
-      it 'diffs content params' do
-        diff = str_diff(res1[0][:parameters], res2[0][:parameters])
-        expect(diff).to match(%r{^-foo content$})
-        expect(diff).to match(%r{^\+foo content 2$})
+    context 'when passing equal strings' do
+      it 'returns nil' do
+        expect(str_diff('abc', 'abc')).to be_nil
       end
     end
   end
