@@ -26,6 +26,7 @@
     1. [Fact search](#fact-search)
     1. [Node list](#node-list)
     1. [Changed depth](#changed-depth)
+    1. [Content differences](#content-differences)
     1. [Output Report](#output-report)
     1. [Non-default PuppetDB/Configuring PuppetDB](#non-default-puppetdbconfiguring-puppetdb)
         1. [Use without PuppetDB](#use-without-puppetdb)
@@ -182,7 +183,6 @@ $ puppet catalog diff \
      --old_catalog_from_puppetdb \
      --certless \
      --show_resource_diff \
-     --content_diff \
      --ignore_parameters alias \  # Puppet6 removes lots of alias parameters
      \ #--yamldir $YAMLDIR \
      \ #--ssldir $SSLDIR \
@@ -246,6 +246,17 @@ face will then automatically calculate the differences between the catalogs. Onc
 is complete a summary of number of nodes with changes as well as nodes whose catalog
 would not compile are listed. You can modify the number of nodes shown here using
 `--changed_depth` option.
+
+### Content differences
+
+The `content` parameter of a resource, such as a `File`'s, can be very large.
+Everywhere except the content differences it is shown only as its checksum.
+When it changes, the content differences show a diff of the text. This applies
+to every resource type, and to `content` given as an array of lines.
+
+Diffs use Puppet's `diff_args` setting, which defaults to `-u`. For more
+context, for example to see the whole of each changed resource with
+`--show_resource_diff`, pass `--diff_args='-U 1000'`.
 
 ### Output Report
 

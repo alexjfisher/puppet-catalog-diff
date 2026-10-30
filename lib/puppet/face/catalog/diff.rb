@@ -29,7 +29,7 @@ Puppet::Face.define(:catalog, '0.0.1') do
     end
 
     option '--content_diff' do
-      summary 'Whether to show a diff for File resource content'
+      summary 'Deprecated and ignored: content parameters are always diffed'
     end
 
     option '--show_resource_diff' do
@@ -169,6 +169,7 @@ Puppet::Face.define(:catalog, '0.0.1') do
       require File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'catalog-diff', 'differ.rb'))
       require File.expand_path(File.join(File.dirname(__FILE__), '..', '..', 'catalog-diff', 'findcatalogs.rb'))
       Puppet.notice('Add --debug for realtime output, add --render-as {json,yaml} for parsed output')
+      Puppet.deprecation_warning('--content_diff is deprecated and has had no effect since 1.7.0: content parameters are always diffed') if options[:content_diff]
 
       # raise "You must pass unique paths to the arguments (#{catalog1} = #{catalog2})" if catalog1 == catalog2
 
