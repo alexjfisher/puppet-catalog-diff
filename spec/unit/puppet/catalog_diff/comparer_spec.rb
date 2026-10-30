@@ -103,11 +103,19 @@ describe Puppet::CatalogDiff::Comparer do
       expect(diffs[:new_params]).to eq('file.foo' => { content: '4eb91aa4f5795ef3658d1e0a2798c816' })
     end
 
-    it 'leaves content that is not text unchanged' do
-      res1[0][:parameters][:content] = { 'foo' => 'bar' }
-      res2[0][:parameters][:content] = { 'foo' => 'baz' }
+    it 'diffs content given as an array of strings' do
+      res1[0][:parameters][:content] = %w[foo bar]
+      res2[0][:parameters][:content] = %w[foo bar baz]
       diffs = compare_resources(res1, res2, {})
-      expect(diffs[:new_params]['file.foo'][:content]).to eq('foo' => 'baz')
+      expect(diffs[:new_params]['file.foo'][:content]).to eq(Digest::MD5.hexdigest("foo\nbar\nbaz\n"))
+      expect(diffs[:content_differences]['file.foo']).to match(%r{^ bar\n\+baz\n\z})
+    end
+
+    it 'leaves content that is not text unchanged' do
+      res1[0][:parameters][:content] = ['foo', 1]
+      res2[0][:parameters][:content] = ['foo', 2]
+      diffs = compare_resources(res1, res2, {})
+      expect(diffs[:new_params]['file.foo'][:content]).to eq(['foo', 2])
       expect(diffs[:content_differences]).to be_empty
     end
   end

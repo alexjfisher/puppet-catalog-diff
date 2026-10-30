@@ -88,6 +88,8 @@ module Puppet::CatalogDiff
     # or returns nil if it is not text
     def checksum_content!(params)
       text = params[:content]
+      # Some types accept content as an array of lines
+      text = text.map { |line| "#{line}\n" }.join if text.is_a?(Array) && text.all?(String)
       return nil unless text.is_a?(String)
 
       params[:content] = Digest::MD5.hexdigest(text)
